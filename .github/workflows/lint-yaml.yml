@@ -43,7 +43,11 @@ jobs:
       - name: Get changed YAML files
         id: changed-files
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual trigger - check all YAML files
+            CHANGED_FILES=$(find . -type f \( -name "*.yml" -o -name "*.yaml" \) ! -path "./.git/*" 2>/dev/null || true)
+            echo "Manual trigger - linting all YAML files"
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
             git fetch origin ${{ github.base_ref }}
             CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.base_ref }}...HEAD | grep -E '\.(yml|yaml)$' || true)
           else
@@ -56,7 +60,7 @@ jobs:
       - name: Run yamllint on changed files
         if: steps.changed-files.outputs.files != ''
         run: |
-          echo "Linting changed YAML files:"
+          echo "Linting YAML files:"
           echo "${{ steps.changed-files.outputs.files }}"
           echo "${{ steps.changed-files.outputs.files }}" | xargs yamllint -c .config/yamllint.yml
 

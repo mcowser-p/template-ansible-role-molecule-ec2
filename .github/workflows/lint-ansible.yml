@@ -43,7 +43,11 @@ jobs:
       - name: Get changed Ansible files
         id: changed-files
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual trigger - check all files
+            CHANGED_FILES=$(find roles playbooks -type f \( -name "*.yml" -o -name "*.yaml" \) 2>/dev/null || true)
+            echo "Manual trigger - linting all Ansible files"
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
             git fetch origin ${{ github.base_ref }}
             CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.base_ref }}...HEAD | grep -E '^(roles|playbooks)/' || true)
           else
@@ -56,7 +60,7 @@ jobs:
       - name: Run ansible-lint on changed files
         if: steps.changed-files.outputs.files != ''
         run: |
-          echo "Linting changed Ansible files:"
+          echo "Linting Ansible files:"
           echo "${{ steps.changed-files.outputs.files }}"
           echo "${{ steps.changed-files.outputs.files }}" | xargs ansible-lint -c .config/ansible-lint.yml
 
