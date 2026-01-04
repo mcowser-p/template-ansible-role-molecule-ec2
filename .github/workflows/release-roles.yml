@@ -1,0 +1,119 @@
+---
+name: Release Roles
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'roles/**'
+      - '.releaserc.*.yml'
+      - '.github/workflows/release-roles.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  detect-roles:
+    name: Detect Changed Roles
+    runs-on: ubuntu-latest
+    outputs:
+      roles: ${{ steps.detect.outputs.roles }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed roles
+        id: detect
+        run: |
+          # Get list of all roles in roles/ directory
+          ALL_ROLES=$(ls -d roles/*/ 2>/dev/null | xargs -n 1 basename | jq -R -s -c 'split("\n")[:-1]')
+
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual trigger - check all roles
+            echo "roles=$ALL_ROLES" >> $GITHUB_OUTPUT
+            echo "Manual trigger - will check all roles: $ALL_ROLES"
+          else
+            # Auto trigger - detect changed roles
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^roles/' || true)
+
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "roles=[]" >> $GITHUB_OUTPUT
+              echo "No role changes detected"
+            else
+              # Extract unique role names from changed files
+              CHANGED_ROLES=$(echo "$CHANGED_FILES" | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n")[:-1]')
+              echo "roles=$CHANGED_ROLES" >> $GITHUB_OUTPUT
+              echo "Changed roles detected: $CHANGED_ROLES"
+            fi
+          fi
+
+  release:
+    name: Release ${{ matrix.role }}
+    needs: detect-roles
+    if: needs.detect-roles.outputs.roles != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        role: ${{ fromJson(needs.detect-roles.outputs.roles) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check and create release config
+        id: check-config
+        run: |
+          ROLE_NAME="${{ matrix.role }}"
+          CONFIG_FILE=".releaserc.${ROLE_NAME}.yml"
+
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "config_source=existing" >> $GITHUB_OUTPUT
+            echo "✅ Using existing release config for $ROLE_NAME"
+          elif [ -f ".releaserc.template.yml" ]; then
+            echo "📝 Generating release config from template for $ROLE_NAME"
+            sed "s/{{ROLE_NAME}}/${ROLE_NAME}/g" .releaserc.template.yml > "$CONFIG_FILE"
+            echo "config_source=generated" >> $GITHUB_OUTPUT
+            echo "✅ Generated release config: $CONFIG_FILE"
+          else
+            echo "config_source=none" >> $GITHUB_OUTPUT
+            echo "❌ No release config or template found for $ROLE_NAME"
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        if: steps.check-config.outputs.config_source != 'none'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install semantic-release
+        if: steps.check-config.outputs.config_source != 'none'
+        run: |
+          npm install -g semantic-release@23 \
+            @semantic-release/git@10 \
+            @semantic-release/changelog@6 \
+            @semantic-release/github@10 \
+            @semantic-release/commit-analyzer@11 \
+            @semantic-release/release-notes-generator@12 \
+            @semantic-release/exec@6 \
+            conventional-changelog-conventionalcommits@7
+
+      - name: Run semantic-release for ${{ matrix.role }}
+        if: steps.check-config.outputs.config_source != 'none'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Running semantic-release for role: ${{ matrix.role }}"
+          echo "Config source: ${{ steps.check-config.outputs.config_source }}"
+          npx semantic-release -e .releaserc.${{ matrix.role }}.yml

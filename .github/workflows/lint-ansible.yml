@@ -1,0 +1,65 @@
+---
+name: Lint Ansible
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'roles/**'
+      - 'playbooks/**'
+      - '.config/ansible-lint.yml'
+      - '.github/workflows/lint-ansible.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'roles/**'
+      - 'playbooks/**'
+      - '.config/ansible-lint.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  ansible-lint:
+    name: Ansible Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible-lint ansible-core
+
+      - name: Get changed Ansible files
+        id: changed-files
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            git fetch origin ${{ github.base_ref }}
+            CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.base_ref }}...HEAD | grep -E '^(roles|playbooks)/' || true)
+          else
+            CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.before }} ${{ github.sha }} | grep -E '^(roles|playbooks)/' || true)
+          fi
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Run ansible-lint on changed files
+        if: steps.changed-files.outputs.files != ''
+        run: |
+          echo "Linting changed Ansible files:"
+          echo "${{ steps.changed-files.outputs.files }}"
+          echo "${{ steps.changed-files.outputs.files }}" | xargs ansible-lint -c .config/ansible-lint.yml
+
+      - name: No files to lint
+        if: steps.changed-files.outputs.files == ''
+        run: echo "No Ansible files changed"

@@ -1,0 +1,20 @@
+---
+# Role metadata
+galaxy_info:
+  author: your_name
+  description: Description of your role
+  company: your_company
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+  galaxy_tags: []
+
+dependencies: []

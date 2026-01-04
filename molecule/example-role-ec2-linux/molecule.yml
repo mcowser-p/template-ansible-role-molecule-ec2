@@ -1,0 +1,29 @@
+---
+driver:
+  name: ec2
+
+platforms:
+  - name: aws-ec2-alma
+    image_id: ami-0d46854b1a684e6c8
+    instance_type: t3.micro
+    vpc_id: vpc-01553b8b20241c497
+    vpc_subnet_id: subnet-00785ada96fd1b121
+    instance_tags:
+      - Name: molecule-aws-ec2-alma
+
+provisioner:
+  name: ansible
+  playbooks:
+    converge: converge.yml
+    verify: verify.yml
+
+verifier:
+  name: testinfra
+  directory: ../tests/
+  env:
+    # get rid of the DeprecationWarning messages of third-party libs,
+    # see https://docs.pytest.org/en/latest/warnings.html#deprecationwarning-and-pendingdeprecationwarning
+    PYTHONWARNINGS: "ignore:.*U.*mode is deprecated:DeprecationWarning"
+  options:
+    # show which tests where executed in test output
+    v: 1

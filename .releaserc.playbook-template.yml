@@ -1,0 +1,74 @@
+---
+# Default Semantic Release Configuration Template for Playbooks
+# This file is used to auto-generate playbook-specific release configs
+# Replace {{PLAYBOOK_NAME}} with the actual playbook name (without .yml extension)
+
+branches:
+  - main
+  - name: develop
+    prerelease: true
+
+# Tag format: {{PLAYBOOK_NAME}}-v1.0.0
+tagFormat: "{{PLAYBOOK_NAME}}-v${version}"
+
+plugins:
+  # Analyze commits to determine version bump
+  - - "@semantic-release/commit-analyzer"
+    - preset: conventionalcommits
+      releaseRules:
+        # Only release when scope is {{PLAYBOOK_NAME}}
+        - type: feat
+          scope: "{{PLAYBOOK_NAME}}"
+          release: minor
+        - type: fix
+          scope: "{{PLAYBOOK_NAME}}"
+          release: patch
+        - type: perf
+          scope: "{{PLAYBOOK_NAME}}"
+          release: patch
+        - type: refactor
+          scope: "{{PLAYBOOK_NAME}}"
+          release: patch
+        - type: docs
+          scope: "{{PLAYBOOK_NAME}}"
+          release: patch
+        # Ignore commits for other playbooks
+        - scope: "!{{PLAYBOOK_NAME}}"
+          release: false
+        # Breaking changes
+        - breaking: true
+          scope: "{{PLAYBOOK_NAME}}"
+          release: major
+
+  # Generate release notes
+  - - "@semantic-release/release-notes-generator"
+    - preset: conventionalcommits
+      presetConfig:
+        types:
+          - type: feat
+            section: Features
+          - type: fix
+            section: Bug Fixes
+          - type: perf
+            section: Performance Improvements
+          - type: refactor
+            section: Code Refactoring
+          - type: docs
+            section: Documentation
+
+  # Update CHANGELOG.md for this playbook
+  - - "@semantic-release/changelog"
+    - changelogFile: playbooks/changelogs/{{PLAYBOOK_NAME}}-CHANGELOG.md
+      changelogTitle: "# Changelog - {{PLAYBOOK_NAME}}\n\nAll notable changes to the {{PLAYBOOK_NAME}} playbook will be documented in this file."
+
+  # Commit updated files back to repository
+  - - "@semantic-release/git"
+    - assets:
+        - playbooks/changelogs/{{PLAYBOOK_NAME}}-CHANGELOG.md
+      message: "chore({{PLAYBOOK_NAME}}): release ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+
+  # Create GitHub release
+  - - "@semantic-release/github"
+    - successComment: false
+      failComment: false
+      releasedLabels: false

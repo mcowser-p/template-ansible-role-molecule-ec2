@@ -1,0 +1,52 @@
+---
+name: Molecule - Ec2 - Linux
+
+on:
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  # EC2-based tests (slower, costs money, more realistic)
+  # Only runs on main branch or manual trigger
+  test-ec2-linux:
+    name: Test Linux with AWS EC2
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    permissions:
+      id-token: write  # Required for OIDC
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install molecule molecule-plugins[ec2] boto3 botocore ansible-core
+          ansible-galaxy collection install amazon.aws community.aws ansible.posix
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-west-2' }}
+          role-session-name: GitHubActions-MoleculeTesting-Linux
+
+      - name: Run Molecule tests (EC2 Linux - Ubuntu & AlmaLinux)
+        run: |
+          molecule test -s aws-ec2-linux
+        env:
+          ANSIBLE_ROLES_PATH: ${{ github.workspace }}/roles
+          PY_COLORS: '1'
+          ANSIBLE_FORCE_COLOR: '1'
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          cd roles/declarative_access
+          molecule destroy -s aws-ec2-linux || true

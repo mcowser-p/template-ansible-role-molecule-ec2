@@ -1,0 +1,6 @@
+---
+- name: Verify - Run AIDE check against baseline
+  hosts: all
+  become: true
+  tasks:
+

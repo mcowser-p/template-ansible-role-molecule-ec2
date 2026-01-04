@@ -1,0 +1,12 @@
+---
+# Example Setup Playbook
+# This is an example playbook to demonstrate the playbook versioning system
+
+- name: Example playbook
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Display hostname
+      ansible.builtin.debug:
+        msg: "Hostname: {{ ansible_hostname }}"

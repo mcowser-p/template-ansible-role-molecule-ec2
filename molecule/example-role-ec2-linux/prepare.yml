@@ -1,0 +1,19 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Wait for system to be ready
+      wait_for_connection:
+        timeout: 300
+        delay: 5
+
+    - name: Make sure python3 is installed
+      package:
+        name: python3
+        state: present
+      become: true
+      retries: 3
+      delay: 10
+      register: result
+      until: result is succeeded

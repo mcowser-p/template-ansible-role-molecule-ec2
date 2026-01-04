@@ -1,0 +1,65 @@
+---
+name: Lint YAML
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - '**.yml'
+      - '**.yaml'
+      - '.config/yamllint.yml'
+      - '.github/workflows/lint-yaml.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - '**.yml'
+      - '**.yaml'
+      - '.config/yamllint.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  yaml-lint:
+    name: YAML Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install yamllint
+
+      - name: Get changed YAML files
+        id: changed-files
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            git fetch origin ${{ github.base_ref }}
+            CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.base_ref }}...HEAD | grep -E '\.(yml|yaml)$' || true)
+          else
+            CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.before }} ${{ github.sha }} | grep -E '\.(yml|yaml)$' || true)
+          fi
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Run yamllint on changed files
+        if: steps.changed-files.outputs.files != ''
+        run: |
+          echo "Linting changed YAML files:"
+          echo "${{ steps.changed-files.outputs.files }}"
+          echo "${{ steps.changed-files.outputs.files }}" | xargs yamllint -c .config/yamllint.yml
+
+      - name: No files to lint
+        if: steps.changed-files.outputs.files == ''
+        run: echo "No YAML files changed"

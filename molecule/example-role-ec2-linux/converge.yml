@@ -1,0 +1,9 @@
+---
+- name: Converge - Apply role
+  hosts: all
+  become: true
+  roles:
+    - role: ../
+      vars:
+
+

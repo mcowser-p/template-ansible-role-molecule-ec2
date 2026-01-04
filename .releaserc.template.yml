@@ -1,0 +1,80 @@
+---
+# Default Semantic Release Configuration Template
+# This file is used to auto-generate role-specific release configs
+# Replace {{ROLE_NAME}} with the actual role name
+
+branches:
+  - main
+  - name: develop
+    prerelease: true
+
+# Tag format: {{ROLE_NAME}}-v1.0.0
+tagFormat: "{{ROLE_NAME}}-v${version}"
+
+plugins:
+  # Analyze commits to determine version bump
+  - - "@semantic-release/commit-analyzer"
+    - preset: conventionalcommits
+      releaseRules:
+        # Only release when scope is {{ROLE_NAME}}
+        - type: feat
+          scope: "{{ROLE_NAME}}"
+          release: minor
+        - type: fix
+          scope: "{{ROLE_NAME}}"
+          release: patch
+        - type: perf
+          scope: "{{ROLE_NAME}}"
+          release: patch
+        - type: refactor
+          scope: "{{ROLE_NAME}}"
+          release: patch
+        - type: docs
+          scope: "{{ROLE_NAME}}"
+          release: patch
+        # Ignore commits for other roles
+        - scope: "!{{ROLE_NAME}}"
+          release: false
+        # Breaking changes
+        - breaking: true
+          scope: "{{ROLE_NAME}}"
+          release: major
+
+  # Generate release notes
+  - - "@semantic-release/release-notes-generator"
+    - preset: conventionalcommits
+      presetConfig:
+        types:
+          - type: feat
+            section: Features
+          - type: fix
+            section: Bug Fixes
+          - type: perf
+            section: Performance Improvements
+          - type: refactor
+            section: Code Refactoring
+          - type: docs
+            section: Documentation
+
+  # Update CHANGELOG.md for this role
+  - - "@semantic-release/changelog"
+    - changelogFile: roles/{{ROLE_NAME}}/CHANGELOG.md
+      changelogTitle: "# Changelog - {{ROLE_NAME}}\n\nAll notable changes to {{ROLE_NAME}} will be documented in this file."
+
+  # Update version in meta/main.yml
+  - - "@semantic-release/exec"
+    - prepareCmd: |
+        sed -i.bak "s/version: .*/version: \"${nextRelease.version}\"/" roles/{{ROLE_NAME}}/meta/main.yml && rm roles/{{ROLE_NAME}}/meta/main.yml.bak || true
+
+  # Commit updated files back to repository
+  - - "@semantic-release/git"
+    - assets:
+        - roles/{{ROLE_NAME}}/CHANGELOG.md
+        - roles/{{ROLE_NAME}}/meta/main.yml
+      message: "chore({{ROLE_NAME}}): release ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+
+  # Create GitHub release
+  - - "@semantic-release/github"
+    - successComment: false
+      failComment: false
+      releasedLabels: false

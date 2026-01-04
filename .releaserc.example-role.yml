@@ -1,0 +1,79 @@
+---
+# Semantic Release Configuration for example-role
+# Automatically creates releases based on conventional commits with scope: example-role
+
+branches:
+  - main
+  - name: develop
+    prerelease: true
+
+# Tag format: example-role-v1.0.0
+tagFormat: "example-role-v${version}"
+
+plugins:
+  # Analyze commits to determine version bump
+  - - "@semantic-release/commit-analyzer"
+    - preset: conventionalcommits
+      releaseRules:
+        # Only release when scope is example-role
+        - type: feat
+          scope: example-role
+          release: minor
+        - type: fix
+          scope: example-role
+          release: patch
+        - type: perf
+          scope: example-role
+          release: patch
+        - type: refactor
+          scope: example-role
+          release: patch
+        - type: docs
+          scope: example-role
+          release: patch
+        # Ignore commits for other roles
+        - scope: "!example-role"
+          release: false
+        # Breaking changes
+        - breaking: true
+          scope: example-role
+          release: major
+
+  # Generate release notes
+  - - "@semantic-release/release-notes-generator"
+    - preset: conventionalcommits
+      presetConfig:
+        types:
+          - type: feat
+            section: Features
+          - type: fix
+            section: Bug Fixes
+          - type: perf
+            section: Performance Improvements
+          - type: refactor
+            section: Code Refactoring
+          - type: docs
+            section: Documentation
+
+  # Update CHANGELOG.md for this role
+  - - "@semantic-release/changelog"
+    - changelogFile: roles/example-role/CHANGELOG.md
+      changelogTitle: "# Changelog - Example Role\n\nAll notable changes to the example-role will be documented in this file."
+
+  # Update version in meta/main.yml
+  - - "@semantic-release/exec"
+    - prepareCmd: |
+        sed -i.bak "s/version: .*/version: \"${nextRelease.version}\"/" roles/example-role/meta/main.yml && rm roles/example-role/meta/main.yml.bak || true
+
+  # Commit updated files back to repository
+  - - "@semantic-release/git"
+    - assets:
+        - roles/example-role/CHANGELOG.md
+        - roles/example-role/meta/main.yml
+      message: "chore(example-role): release ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+
+  # Create GitHub release
+  - - "@semantic-release/github"
+    - successComment: false
+      failComment: false
+      releasedLabels: false

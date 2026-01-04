@@ -1,0 +1,28 @@
+---
+# Ansible Lint Configuration
+
+# Exclude paths from linting
+exclude_paths:
+  - .cache/
+  - .github/
+  - test/output/
+  - molecule/
+  - '*.md'
+
+# Skip specific rules
+skip_list:
+  - yaml[line-length]  # Allow longer lines in YAML
+  - name[casing]       # Allow flexible task naming
+  - fqcn[action-core]  # Allow short module names for core modules
+
+# Enable offline mode (don't check for updates)
+offline: false
+
+# Set verbosity
+verbosity: 1
+
+# Use default rules
+use_default_rules: true
+
+# Enable progressive mode (only new violations)
+progressive: false

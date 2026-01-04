@@ -1,0 +1,136 @@
+---
+name: Release Playbooks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'playbooks/*.yml'
+      - 'playbooks/*.yaml'
+      - '.releaserc.playbook-*.yml'
+      - '.github/workflows/release-playbooks.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  detect-playbooks:
+    name: Detect Changed Playbooks
+    runs-on: ubuntu-latest
+    outputs:
+      playbooks: ${{ steps.detect.outputs.playbooks }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed playbooks
+        id: detect
+        run: |
+          # Get list of all playbook files (excluding changelogs directory)
+          ALL_PLAYBOOKS=$(find playbooks -maxdepth 1 -name '*.yml' -o -name '*.yaml' 2>/dev/null | xargs -n 1 basename | sed 's/\.[^.]*$//' | jq -R -s -c 'split("\n")[:-1]')
+
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual trigger - check all playbooks
+            echo "playbooks=$ALL_PLAYBOOKS" >> $GITHUB_OUTPUT
+            echo "Manual trigger - will check all playbooks: $ALL_PLAYBOOKS"
+          else
+            # Auto trigger - detect changed playbooks
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^playbooks/.*\.ya\?ml$' | grep -v 'changelogs/' || true)
+
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "playbooks=[]" >> $GITHUB_OUTPUT
+              echo "No playbook changes detected"
+            else
+              # Extract playbook names (without extension)
+              CHANGED_PLAYBOOKS=$(echo "$CHANGED_FILES" | xargs -n 1 basename | sed 's/\.[^.]*$//' | sort -u | jq -R -s -c 'split("\n")[:-1]')
+              echo "playbooks=$CHANGED_PLAYBOOKS" >> $GITHUB_OUTPUT
+              echo "Changed playbooks detected: $CHANGED_PLAYBOOKS"
+            fi
+          fi
+
+  release:
+    name: Release ${{ matrix.playbook }}
+    needs: detect-playbooks
+    if: needs.detect-playbooks.outputs.playbooks != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        playbook: ${{ fromJson(needs.detect-playbooks.outputs.playbooks) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check and create release config
+        id: check-config
+        run: |
+          PLAYBOOK_NAME="${{ matrix.playbook }}"
+          CONFIG_FILE=".releaserc.playbook-${PLAYBOOK_NAME}.yml"
+
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "config_source=existing" >> $GITHUB_OUTPUT
+            echo "✅ Using existing release config for $PLAYBOOK_NAME"
+          elif [ -f ".releaserc.playbook-template.yml" ]; then
+            echo "📝 Generating release config from template for $PLAYBOOK_NAME"
+            sed "s/{{PLAYBOOK_NAME}}/${PLAYBOOK_NAME}/g" .releaserc.playbook-template.yml > "$CONFIG_FILE"
+
+            # Create changelog directory if it doesn't exist
+            mkdir -p playbooks/changelogs
+
+            # Create changelog file if it doesn't exist
+            if [ ! -f "playbooks/changelogs/${PLAYBOOK_NAME}-CHANGELOG.md" ]; then
+              cat > "playbooks/changelogs/${PLAYBOOK_NAME}-CHANGELOG.md" << EOF
+          # Changelog - ${PLAYBOOK_NAME}
+
+          All notable changes to the ${PLAYBOOK_NAME} playbook will be documented in this file.
+
+          This project uses [Semantic Versioning](https://semver.org/) and follows the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+
+          Releases are automatically generated based on commit messages with scope \`${PLAYBOOK_NAME}\`.
+          EOF
+            fi
+
+            echo "config_source=generated" >> $GITHUB_OUTPUT
+            echo "✅ Generated release config: $CONFIG_FILE"
+          else
+            echo "config_source=none" >> $GITHUB_OUTPUT
+            echo "❌ No release config or template found for $PLAYBOOK_NAME"
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        if: steps.check-config.outputs.config_source != 'none'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install semantic-release
+        if: steps.check-config.outputs.config_source != 'none'
+        run: |
+          npm install -g semantic-release@23 \
+            @semantic-release/git@10 \
+            @semantic-release/changelog@6 \
+            @semantic-release/github@10 \
+            @semantic-release/commit-analyzer@11 \
+            @semantic-release/release-notes-generator@12 \
+            conventional-changelog-conventionalcommits@7
+
+      - name: Run semantic-release for ${{ matrix.playbook }}
+        if: steps.check-config.outputs.config_source != 'none'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Running semantic-release for playbook: ${{ matrix.playbook }}"
+          echo "Config source: ${{ steps.check-config.outputs.config_source }}"
+          npx semantic-release -e .releaserc.playbook-${{ matrix.playbook }}.yml
