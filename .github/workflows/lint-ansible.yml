@@ -51,7 +51,13 @@ jobs:
             git fetch origin ${{ github.base_ref }}
             CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT origin/${{ github.base_ref }}...HEAD | grep -E '^(roles|playbooks)/' || true)
           else
-            CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.before }} ${{ github.sha }} | grep -E '^(roles|playbooks)/' || true)
+            # Check if before SHA exists, otherwise check all files
+            if git cat-file -e ${{ github.event.before }} 2>/dev/null; then
+              CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.before }} ${{ github.sha }} | grep -E '^(roles|playbooks)/' || true)
+            else
+              echo "First commit or before SHA not found - checking all files"
+              CHANGED_FILES=$(find roles playbooks -type f \( -name "*.yml" -o -name "*.yaml" \) 2>/dev/null || true)
+            fi
           fi
           echo "files<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
