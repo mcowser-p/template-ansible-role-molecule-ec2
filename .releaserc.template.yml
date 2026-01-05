@@ -3,6 +3,9 @@
 # This file is used to auto-generate role-specific release configs
 # Replace {{ROLE_NAME}} with the actual role name
 
+# Disable npm plugin (we're not publishing to npm)
+ci: false
+
 branches:
   - main
   - name: develop
