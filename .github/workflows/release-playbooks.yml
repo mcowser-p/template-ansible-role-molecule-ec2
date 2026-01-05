@@ -116,4 +116,4 @@ jobs:
         run: |
           echo "Running semantic-release for playbook: ${{ matrix.playbook }}"
           echo "Config source: ${{ steps.check-config.outputs.config_source }}"
-          npx semantic-release -c "${GITHUB_WORKSPACE}/.releaserc.playbook-${{ matrix.playbook }}.yml"
+          npx semantic-release -c "${GITHUB_WORKSPACE}/.releaserc.playbook-${{ matrix.playbook }}.yml" --fail-on-no-release
