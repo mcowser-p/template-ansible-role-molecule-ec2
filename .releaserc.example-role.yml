@@ -55,7 +55,18 @@ plugins:
           - type: docs
             section: Documentation
 
-  # Create GitHub release (no commits back to repo)
+  # Update version in meta/main.yml
+  - - "@semantic-release/exec"
+    - prepareCmd: |
+        sed -i.bak "s/version: .*/version: \"${nextRelease.version}\"/" roles/example-role/meta/main.yml && rm roles/example-role/meta/main.yml.bak || true
+
+  # Commit updated version back to repository
+  - - "@semantic-release/git"
+    - assets:
+        - roles/example-role/meta/main.yml
+      message: "chore(example-role): release ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+
+  # Create GitHub release
   - - "@semantic-release/github"
     - successComment: false
       failComment: false
