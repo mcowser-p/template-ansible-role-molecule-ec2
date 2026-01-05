@@ -133,4 +133,4 @@ jobs:
         run: |
           echo "Running semantic-release for playbook: ${{ matrix.playbook }}"
           echo "Config source: ${{ steps.check-config.outputs.config_source }}"
-          npx semantic-release -e .releaserc.playbook-${{ matrix.playbook }}.yml
+          npx semantic-release --extends ./.releaserc.playbook-${{ matrix.playbook }}.yml
