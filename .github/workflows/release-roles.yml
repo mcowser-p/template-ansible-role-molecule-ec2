@@ -116,4 +116,4 @@ jobs:
         run: |
           echo "Running semantic-release for role: ${{ matrix.role }}"
           echo "Config source: ${{ steps.check-config.outputs.config_source }}"
-          npx semantic-release --extends ./.releaserc.${{ matrix.role }}.yml
+          npx semantic-release -c "${GITHUB_WORKSPACE}/.releaserc.${{ matrix.role }}.yml"
