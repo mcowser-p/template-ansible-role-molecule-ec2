@@ -84,23 +84,6 @@ jobs:
           elif [ -f ".releaserc.playbook-template.yml" ]; then
             echo "📝 Generating release config from template for $PLAYBOOK_NAME"
             sed "s/{{PLAYBOOK_NAME}}/${PLAYBOOK_NAME}/g" .releaserc.playbook-template.yml > "$CONFIG_FILE"
-
-            # Create changelog directory if it doesn't exist
-            mkdir -p playbooks/changelogs
-
-            # Create changelog file if it doesn't exist
-            if [ ! -f "playbooks/changelogs/${PLAYBOOK_NAME}-CHANGELOG.md" ]; then
-              cat > "playbooks/changelogs/${PLAYBOOK_NAME}-CHANGELOG.md" << EOF
-          # Changelog - ${PLAYBOOK_NAME}
-
-          All notable changes to the ${PLAYBOOK_NAME} playbook will be documented in this file.
-
-          This project uses [Semantic Versioning](https://semver.org/) and follows the [Conventional Commits](https://www.conventionalcommits.org/) specification.
-
-          Releases are automatically generated based on commit messages with scope \`${PLAYBOOK_NAME}\`.
-          EOF
-            fi
-
             echo "config_source=generated" >> $GITHUB_OUTPUT
             echo "✅ Generated release config: $CONFIG_FILE"
           else

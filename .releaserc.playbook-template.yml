@@ -56,18 +56,7 @@ plugins:
           - type: docs
             section: Documentation
 
-  # Update CHANGELOG.md for this playbook
-  - - "@semantic-release/changelog"
-    - changelogFile: playbooks/changelogs/{{PLAYBOOK_NAME}}-CHANGELOG.md
-      changelogTitle: "# Changelog - {{PLAYBOOK_NAME}}\n\nAll notable changes to the {{PLAYBOOK_NAME}} playbook will be documented in this file."
-
-  # Commit updated files back to repository
-  - - "@semantic-release/git"
-    - assets:
-        - playbooks/changelogs/{{PLAYBOOK_NAME}}-CHANGELOG.md
-      message: "chore({{PLAYBOOK_NAME}}): release ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-
-  # Create GitHub release
+  # Create GitHub release (no commits back to repo)
   - - "@semantic-release/github"
     - successComment: false
       failComment: false

@@ -55,24 +55,7 @@ plugins:
           - type: docs
             section: Documentation
 
-  # Update CHANGELOG.md for this role
-  - - "@semantic-release/changelog"
-    - changelogFile: roles/example-role/CHANGELOG.md
-      changelogTitle: "# Changelog - Example Role\n\nAll notable changes to the example-role will be documented in this file."
-
-  # Update version in meta/main.yml
-  - - "@semantic-release/exec"
-    - prepareCmd: |
-        sed -i.bak "s/version: .*/version: \"${nextRelease.version}\"/" roles/example-role/meta/main.yml && rm roles/example-role/meta/main.yml.bak || true
-
-  # Commit updated files back to repository
-  - - "@semantic-release/git"
-    - assets:
-        - roles/example-role/CHANGELOG.md
-        - roles/example-role/meta/main.yml
-      message: "chore(example-role): release ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-
-  # Create GitHub release
+  # Create GitHub release (no commits back to repo)
   - - "@semantic-release/github"
     - successComment: false
       failComment: false
