@@ -3,9 +3,6 @@
 # This file is used to auto-generate playbook-specific release configs
 # Replace {{PLAYBOOK_NAME}} with the actual playbook name (without .yml extension)
 
-# Disable npm plugin (we're not publishing to npm)
-ci: false
-
 branches:
   - main
   - name: develop
@@ -75,3 +72,5 @@ plugins:
     - successComment: false
       failComment: false
       releasedLabels: false
+      # Disable npm publishing
+      npmPublish: false

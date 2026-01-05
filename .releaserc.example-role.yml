@@ -2,9 +2,6 @@
 # Semantic Release Configuration for example-role
 # Automatically creates releases based on conventional commits with scope: example-role
 
-# Disable npm plugin (we're not publishing to npm)
-ci: false
-
 branches:
   - main
   - name: develop
@@ -80,3 +77,5 @@ plugins:
     - successComment: false
       failComment: false
       releasedLabels: false
+      # Disable npm publishing
+      npmPublish: false
