@@ -1,0 +1,19 @@
+{
+  "name": "ansible-role-molecule-ec2-template",
+  "version": "1.0.0",
+  "description": "Ansible multi-role repository with Molecule EC2 testing",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcowser-p/template-ansible-role-molecule-ec2.git"
+  },
+  "keywords": [
+    "ansible",
+    "molecule",
+    "ec2",
+    "testing",
+    "roles"
+  ],
+  "author": "",
+  "license": "MIT"
+}
